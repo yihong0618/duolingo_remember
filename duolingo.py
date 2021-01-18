@@ -74,7 +74,7 @@ def main(duolingo_user_name, duolingo_password, tele_token, tele_chat_id, latest
     duolingo_words = get_duolingo_words_and_save_mp3(s, latest_num=latest_num)
     if duolingo_words:
         duolingo_words = (
-            f"Your streak: {duolingo_streak}" "New words\n" + duolingo_words
+            f"Your streak: {duolingo_streak}\n" "New words\n" + duolingo_words
         )
         requests.post(
             url="https://api.telegram.org/bot{0}/{1}".format(tele_token, "sendMessage"),

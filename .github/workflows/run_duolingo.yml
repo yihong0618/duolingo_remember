@@ -1,0 +1,56 @@
+name: Make Duolingo words
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0,13 * * *"
+
+env:
+  LATEST_WORDS_NUMBER: 50
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: agu
+        run: sudo apt-get update
+      - name: install ffmpeg
+        run: sudo apt-get install ffmpeg
+
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.6
+      - name: Configure pip cache
+        uses: actions/cache@v1
+        id: pip-cache
+        with:
+          path: venv
+          key: pip-1-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            pip-
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+        if: steps.pip-cache.outputs.cache-hit != 'true'
+
+      - name: Send new words
+        run: |
+          source venv/bin/activate
+          python duolingo.py ${{ secrets.DUOLINGO_USERNAME }} ${{ secrets.DUOLINGO_PASSWORD }} ${{ secrets.TELE_TOKEN }} ${{ secrets.TELE_CHAT_ID }} ${{ env.LATEST_WORDS_NUMBER }}
+
+      - name: Check file existence
+        id: check_files
+        uses: andstor/file-existence-action@v1
+        with:
+          files: "MP3_NEW/1.mp3"
+      - name: use ffmpeg combine and send
+        id: setup-ffmpeg
+        run: | 
+          ffmpeg -y -f concat -safe 0 -i <(find "$(pwd)"/MP3_NEW -iname "*.mp3" -printf "file "%p"\n" | sort) -c copy "$(pwd)"/$(date +"%m%d")_new_words.mp3
+          curl -v -F "chat_id=${{ secrets.TELE_CHAT_ID }}" -F document=@$(date +"%m%d")_new_words.mp3 https://api.telegram.org/bot${{ secrets.TELE_TOKEN }}/sendDocument
+        if: steps.check_files.outputs.files_exists == 'true'

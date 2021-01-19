@@ -12,7 +12,7 @@ Automatically send new words from duolingo to telegram
 ![image](https://user-images.githubusercontent.com/15976103/104862640-881feb80-596e-11eb-839a-93f164b40ecc.png)
 ![image](https://user-images.githubusercontent.com/15976103/104862648-8eae6300-596e-11eb-8881-d29845649af2.png)
 
-# TODO
+## TODO
 - [ ] Support auto buy streak freeze
 - [ ] Support sentence mp3
 - [ ] Make action a little simple

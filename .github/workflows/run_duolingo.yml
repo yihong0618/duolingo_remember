@@ -2,8 +2,6 @@ name: Make Duolingo words
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 0,13 * * *"
 
 env:
   LATEST_WORDS_NUMBER: 50

@@ -5,11 +5,15 @@ import json
 import requests
 
 DUOLINGO_SETTING_URL = "https://www.duolingo.com/api/1/version_info"
+HEADERS = {
+    "Accept": "*/*",
+    "User-Agent": "request",
+}
 
 
 def get_duolingo_setting():
     try:
-        r = requests.get(DUOLINGO_SETTING_URL)
+        r = requests.get(DUOLINGO_SETTING_URL, headers=HEADERS)
     except Exception as e:
         print(f"Something is wrong to get the setting error: {str(e)}")
         exit(1)
@@ -20,16 +24,13 @@ def get_duolingo_setting():
     lauguage_tts_dict = setting_data.get("tts_voice_configuration", {}).get("voices")
     return tts_base_url, json.loads(lauguage_tts_dict)
 
+
 def get_duolingo_session_and_name(user_name, password):
-    headers = {
-        "Accept": "*/*",
-        "User-Agent": "request",
-    }
     s = requests.Session()
     r = s.post(
         "https://www.duolingo.com/login",
         params={"login": user_name, "password": password},
-        headers=headers
+        headers=HEADERS,
     )
     if r.status_code != 200:
         raise Exception("Login failed")
@@ -38,7 +39,7 @@ def get_duolingo_session_and_name(user_name, password):
 
 
 def get_duolingo_daily(session, name):
-    r = session.get(f"https://www.duolingo.com/users/{name}")
+    r = session.get(f"https://www.duolingo.com/users/{name}", headers=HEADERS)
     if r.status_code != 200:
         raise Exception("Get profile failed")
     data = r.json()
@@ -50,10 +51,10 @@ def get_duolingo_daily(session, name):
 
 
 def get_duolingo_words_and_save_mp3(session, tts_url, latest_num=100):
-    r = session.get("https://www.duolingo.com/vocabulary/overview")
+    r = session.get("https://www.duolingo.com/vocabulary/overview", headers=HEADERS)
     if not r.ok:
         raise Exception("get duolingo words failed")
-    
+
     words = r.json()["vocab_overview"]
     words.sort(key=lambda v: v.get("last_practiced_ms", 0), reverse=True)
     words_list = []
@@ -62,7 +63,7 @@ def get_duolingo_words_and_save_mp3(session, tts_url, latest_num=100):
     for w in my_new_words:
         if w["normalized_string"] == "<*sf>":
             continue
-        word_string = w["word_string"] 
+        word_string = w["word_string"]
         words_list.append(word_string)
         try:
             mp3_content = requests.get(f"{tts_url}{word_string}")
@@ -79,9 +80,11 @@ def main(duolingo_user_name, duolingo_password, tele_token, tele_chat_id, latest
     s, duolingo_name = get_duolingo_session_and_name(
         duolingo_user_name, duolingo_password
     )
-    _, lauguage, duolingo_streak, duolingo_today_check = get_duolingo_daily(s, duolingo_name)
+    _, lauguage, duolingo_streak, duolingo_today_check = get_duolingo_daily(
+        s, duolingo_name
+    )
     tts_url_base, lauguage_setting_dict = get_duolingo_setting()
-    lauguage_path = lauguage_setting_dict.get(lauguage) 
+    lauguage_path = lauguage_setting_dict.get(lauguage)
     tts_url = f"{tts_url_base}tts/{lauguage_path}/token/"
     try:
         latest_num = int(latest_num)

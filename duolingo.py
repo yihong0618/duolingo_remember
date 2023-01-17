@@ -21,10 +21,15 @@ def get_duolingo_setting():
     return tts_base_url, json.loads(lauguage_tts_dict)
 
 def get_duolingo_session_and_name(user_name, password):
+    headers = {
+        "Accept": "*/*",
+        "User-Agent": "request",
+    }
     s = requests.Session()
     r = s.post(
         "https://www.duolingo.com/login",
         params={"login": user_name, "password": password},
+        headers=headers
     )
     if r.status_code != 200:
         raise Exception("Login failed")

@@ -13,13 +13,13 @@ jobs:
     steps:
       - name: agu
         run: sudo apt-get update
-      - name: install ffmpeg
-        run: sudo apt-get install ffmpeg
+      - name: Setup ffmpeg for differnt platforms 
+        uses: FedericoCarboni/setup-ffmpeg@master
       - uses: actions/checkout@v2
       - name: Set up Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6
+          python-version: 3.8
       - name: Configure pip cache
         uses: actions/cache@v1
         id: pip-cache

@@ -25,21 +25,9 @@ def get_duolingo_setting():
     return tts_base_url, json.loads(lauguage_tts_dict)
 
 
-def get_duolingo_session_and_name(user_name, password):
-    s = requests.Session()
-    r = s.post(
-        "https://www.duolingo.com/login",
-        params={"login": user_name, "password": password},
-        headers=HEADERS,
-    )
-    if r.status_code != 200:
-        raise Exception("Login failed")
-    name = r.json()["username"]
-    return s, name
-
-
-def get_duolingo_daily(session, name):
-    r = session.get(f"https://www.duolingo.com/users/{name}", headers=HEADERS)
+def get_duolingo_daily(name, jwt):
+    HEADERS["Authorization"] = "Bearer " + jwt
+    r = requests.get(f"https://www.duolingo.com/users/{name}", headers=HEADERS)
     if r.status_code != 200:
         raise Exception("Get profile failed")
     data = r.json()
@@ -50,8 +38,8 @@ def get_duolingo_daily(session, name):
     return level_progress, lauguage, streak, is_today_check
 
 
-def get_duolingo_words_and_save_mp3(session, tts_url, latest_num=100):
-    r = session.get("https://www.duolingo.com/vocabulary/overview", headers=HEADERS)
+def get_duolingo_words_and_save_mp3(tts_url, latest_num=100):
+    r = requests.get("https://www.duolingo.com/vocabulary/overview", headers=HEADERS)
     if not r.ok:
         raise Exception("get duolingo words failed")
 
@@ -76,12 +64,9 @@ def get_duolingo_words_and_save_mp3(session, tts_url, latest_num=100):
         return "\n".join(words_list)
 
 
-def main(duolingo_user_name, duolingo_password, tele_token, tele_chat_id, latest_num):
-    s, duolingo_name = get_duolingo_session_and_name(
-        duolingo_user_name, duolingo_password
-    )
+def main(duolingo_user_name, duolingo_jwt, tele_token, tele_chat_id, latest_num):
     _, lauguage, duolingo_streak, duolingo_today_check = get_duolingo_daily(
-        s, duolingo_name
+        duolingo_user_name, duolingo_jwt
     )
     tts_url_base, lauguage_setting_dict = get_duolingo_setting()
     lauguage_path = lauguage_setting_dict.get(lauguage)
@@ -92,7 +77,7 @@ def main(duolingo_user_name, duolingo_password, tele_token, tele_chat_id, latest
         print(str(e))
         # default
         latest_num = 50
-    duolingo_words = get_duolingo_words_and_save_mp3(s, tts_url, latest_num=latest_num)
+    duolingo_words = get_duolingo_words_and_save_mp3(tts_url, latest_num=latest_num)
     if duolingo_words:
         duolingo_words = (
             f"Your streak: {duolingo_streak}\n" "New words\n" + duolingo_words
@@ -114,14 +99,14 @@ def main(duolingo_user_name, duolingo_password, tele_token, tele_chat_id, latest
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("duolingo_user_name", help="duolingo_user_name")
-    parser.add_argument("duolingo_password", help="duolingo_password")
+    parser.add_argument("duolingo_jwt", help="duolingo jwt ")
     parser.add_argument("tele_token", help="tele_token")
     parser.add_argument("tele_chat_id", help="tele_chat_id")
     parser.add_argument("latest_number", help="latest_number")
     options = parser.parse_args()
     main(
         options.duolingo_user_name,
-        options.duolingo_password,
+        options.duolingo_jwt,
         options.tele_token,
         options.tele_chat_id,
         options.latest_number,

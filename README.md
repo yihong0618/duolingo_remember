@@ -2,10 +2,12 @@
 Automatically send new words from duolingo to telegram
 
 ## steps
-1. Get your telegram token and chatid (please google how to)
-2. Change the secrets to your own
-3. Change your own config file in [yml](./.github/workflows/run_duolingo.yml)
-4. If you fork this repo run the actions, please trigger the action first (by mannual).
+
+- Login duolingo.com to get jwt, console run `document.cookie.match(new RegExp('(^| )jwt_token=([^;]+)'))[0].slice(11)`
+- Get your telegram token and chatid (please google how to)
+- Change the secrets to your own
+- Change your own config file in [yml](./.github/workflows/run_duolingo.yml)
+- If you fork this repo run the actions, please trigger the action first (by mannual).
 
 ![image](https://user-images.githubusercontent.com/15976103/104864128-19915c80-5973-11eb-93d7-2bc9152dfc30.png)
 

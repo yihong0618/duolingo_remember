@@ -3,11 +3,19 @@ Automatically send new words from duolingo to telegram
 
 ## steps
 
-- Login duolingo.com to get jwt, console run `document.cookie.match(new RegExp('(^| )jwt_token=([^;]+)'))[0].slice(11)`
+- Login duolingo.com to get jwt, open webbrowser run `document.cookie.match(new RegExp('(^| )jwt_token=([^;]+)'))[0].slice(11)`
 - Get your telegram token and chatid (please google how to)
 - Change the secrets to your own
 - Change your own config file in [yml](./.github/workflows/run_duolingo.yml)
 - If you fork this repo run the actions, please trigger the action first (by mannual).
+
+## Run local
+
+```
+pip install -r requirements.txt
+python duolingo.py  ${duolingo_name} ${duolingo_jwt}
+
+```
 
 ![image](https://user-images.githubusercontent.com/15976103/104864128-19915c80-5973-11eb-93d7-2bc9152dfc30.png)
 
@@ -17,7 +25,7 @@ Automatically send new words from duolingo to telegram
 
 ## TODO
 - [ ] Support auto buy streak freeze
-- [ ] Support sentence mp3
-- [ ] Make action a little simple
+- [x] Support sentence mp3
+- [x] Make action a little simple
 - [ ] Support Multi lauguages
 - [ ] Support send to other bots like dingding

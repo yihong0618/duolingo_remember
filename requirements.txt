@@ -1,1 +1,4 @@
 requests
+openai
+edge-tts
+rich

@@ -335,7 +335,6 @@ def make_edge_tts_mp3(text, language_short):
     TODO Refactor this shit
     """
     language = random.choice(EDGE_TTS_DICT.get(language_short, "zh"))
-
     communicate = edge_tts.Communicate(text, language)
     return asyncio.run(communicate.save("new_article.mp3"))
 
@@ -367,7 +366,9 @@ def get_duolingo_words_and_save_mp3(tts_url, latest_num=100):
         words_list.append(word_string)
 
     for index, w in enumerate(words_list):
-        threading.Thread(target=download_word_to_mp3, args=(i, w))
+        t = threading.Thread(target=download_word_to_mp3, args=(index, w))
+        t.start()
+        t.join()
 
     words_str = ",".join(words_list)
     article = call_openai_to_make_article(words_str, language)

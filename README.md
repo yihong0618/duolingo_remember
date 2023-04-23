@@ -13,8 +13,7 @@ Automatically send new words from duolingo to telegram
 
 ```
 pip install -r requirements.txt
-python duolingo.py  ${duolingo_name} ${duolingo_jwt}
-
+python duolingo.py ${duolingo_name} ${duolingo_jwt}
 ```
 
 ![image](https://user-images.githubusercontent.com/15976103/104864128-19915c80-5973-11eb-93d7-2bc9152dfc30.png)
@@ -29,3 +28,13 @@ python duolingo.py  ${duolingo_name} ${duolingo_jwt}
 - [x] Make action a little simple
 - [ ] Support Multi lauguages
 - [ ] Support send to other bots like dingding
+
+
+# Contribution
+
+- Any issues or PRs are welcome.
+- Please run `black .` before submitting the code.
+
+## Appreciation
+
+Thank you, that's enough.

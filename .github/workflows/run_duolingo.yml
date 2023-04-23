@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
 
 env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   LATEST_WORDS_NUMBER: 20
 
 jobs:

@@ -1,6 +1,9 @@
 # duolingo_remember
 Automatically send new words from duolingo to telegram
 
+https://user-images.githubusercontent.com/15976103/233841350-08bf3a61-3447-409d-9e04-22739f9691dd.mp4
+
+
 ## steps
 
 - Login duolingo.com to get jwt, open webbrowser run `document.cookie.match(new RegExp('(^| )jwt_token=([^;]+)'))[0].slice(11)`

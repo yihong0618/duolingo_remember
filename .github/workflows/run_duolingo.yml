@@ -30,15 +30,29 @@ jobs:
         run: |
           python duolingo.py ${{ secrets.DUOLINGO_USERNAME }} ${{ secrets.DUOLINGO_JWT }}  --tele_token ${{ secrets.TELE_TOKEN }} --tele_chat_id ${{ secrets.TELE_CHAT_ID }} --latest_number ${{ env.LATEST_WORDS_NUMBER }}
 
-      - name: Check file existence
-        id: check_files
-        uses: andstor/file-existence-action@v1
+      - name: Check file new existence
+        id: check_mp3_new_files
+        uses: andstor/file-existence-action@v2
         with:
           files: "MP3_NEW/1.mp3"
-      - name: use ffmpeg combine and send
+
+      - name: Check file conversation existence
+        id: check_mp3_conversation_files
+        uses: andstor/file-existence-action@v2
+        with:
+          files: "CONVERSATION_NEW/1.mp3"
+
+      - name: use ffmpeg combine and send new mp3
         id: setup-ffmpeg
         run: | 
           ffmpeg -y -f concat -safe 0 -i <(find "$(pwd)"/MP3_NEW -iname "*.mp3" -printf "file "%p"\n" | sort) -c copy "$(pwd)"/$(date +"%m%d")_new_words.mp3
           curl -v -F "chat_id=${{ secrets.TELE_CHAT_ID }}" -F document=@$(date +"%m%d")_new_words.mp3 https://api.telegram.org/bot${{ secrets.TELE_TOKEN }}/sendDocument
           curl -v -F "chat_id=${{ secrets.TELE_CHAT_ID }}" -F document=@new_article.mp3 https://api.telegram.org/bot${{ secrets.TELE_TOKEN }}/sendDocument
-        if: steps.check_files.outputs.files_exists == 'true'
+        if: steps.check_mp3_new_files.outputs.files_exists == 'true'
+
+      - name: use ffmpeg combine and send conversation mp3
+        id: setup-ffmpeg
+        run: | 
+          ffmpeg -y -f concat -safe 0 -i <(find "$(pwd)"/CONVERSATION_NEW -iname "*.mp3" -printf "file "%p"\n" | sort) -c copy "$(pwd)"/$(date +"%m%d")_conversation.mp3
+          curl -v -F "chat_id=${{ secrets.TELE_CHAT_ID }}" -F document=@$(date +"%m%d")_conversation.mp3 https://api.telegram.org/bot${{ secrets.TELE_TOKEN }}/sendDocument
+        if: steps.check_mp3_new_files.outputs.files_exists == 'true'

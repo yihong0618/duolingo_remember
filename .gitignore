@@ -127,3 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+MP3_NEW/*.mp3
+CONVERSATION_NEW/*.mp3

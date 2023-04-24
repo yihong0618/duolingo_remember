@@ -44,13 +44,13 @@ jobs:
 
       - name: use ffmpeg combine and send new mp3
         run: | 
-          ffmpeg -y -f concat -safe 0 -i <(find "$(pwd)"/MP3_NEW -iname "*.mp3" -printf "file "%p"\n" | sort) -c copy "$(pwd)"/$(date +"%m%d")_new_words.mp3
+          ffmpeg -y -f concat -safe 0 -i <(find "$(pwd)"/MP3_NEW -iname "*.mp3" -printf "file "%p"\n" | sort -V) -c copy "$(pwd)"/$(date +"%m%d")_new_words.mp3
           curl -v -F "chat_id=${{ secrets.TELE_CHAT_ID }}" -F document=@$(date +"%m%d")_new_words.mp3 https://api.telegram.org/bot${{ secrets.TELE_TOKEN }}/sendDocument
           curl -v -F "chat_id=${{ secrets.TELE_CHAT_ID }}" -F document=@new_article.mp3 https://api.telegram.org/bot${{ secrets.TELE_TOKEN }}/sendDocument
         if: steps.check_mp3_new_files.outputs.files_exists == 'true'
 
       - name: use ffmpeg combine and send conversation mp3
         run: | 
-          ffmpeg -y -f concat -safe 0 -i <(find "$(pwd)"/CONVERSATION_NEW -iname "*.mp3" -printf "file "%p"\n" | sort) -c copy "$(pwd)"/$(date +"%m%d")_conversation.mp3
+          ffmpeg -y -f concat -safe 0 -i <(find "$(pwd)"/CONVERSATION_NEW -iname "*.mp3" -printf "file "%p"\n" | sort -V) -c copy "$(pwd)"/$(date +"%m%d")_conversation.mp3
           curl -v -F "chat_id=${{ secrets.TELE_CHAT_ID }}" -F document=@$(date +"%m%d")_conversation.mp3 https://api.telegram.org/bot${{ secrets.TELE_TOKEN }}/sendDocument
         if: steps.check_mp3_new_files.outputs.files_exists == 'true'

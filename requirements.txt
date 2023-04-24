@@ -2,3 +2,4 @@ requests
 openai
 edge-tts
 rich
+EdgeGPT

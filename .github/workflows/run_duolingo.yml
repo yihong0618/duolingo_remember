@@ -5,6 +5,7 @@ on:
 
 env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  EDGE_GPT_COOKIE: ${{ secrets.EDGE_GPT_COOKIE }}
   LATEST_WORDS_NUMBER: 20
 
 jobs:

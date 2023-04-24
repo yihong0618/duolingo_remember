@@ -9,6 +9,7 @@ import requests
 import openai
 import edge_tts
 import asyncio
+from EdgeGPT import Chatbot, ConversationStyle
 
 DUOLINGO_SETTING_URL = "https://www.duolingo.com/api/1/version_info"
 HEADERS = {
@@ -16,8 +17,9 @@ HEADERS = {
     "User-Agent": "request",
 }
 
-PROMPT = "Please write a short story in {language} which is less than 300 words, the story should use simple words and these special words must be included: ${words}."
-PROMPT_TRANS = "Translate the given text to {language}. Be faithful or accurate in translation. Make the translation readable or intelligible. Be elegant or natural in translation. f the text cannot be translated, return the original text as is. Do not translate person's name. Do not add any additional text in the translation. The text to be translated is:\n{text}"
+PROMPT = "Please write a short story in {language} which is less than 300 words, the story should use simple words and these special words must be included: {words}."
+PROMPT_EDGE_GPT = "Please write a short story in {language} which is less than 300 words, please tell the story only without anything else, the story should use simple words and these special words must be included: {words}."
+PROMPT_TRANS = "Translate the given text to {language}. Be faithful or accurate in translation. Make the translation readable or intelligible. Be elegant or natural in translation. If the text cannot be translated, return the original text as is. Do not translate person's name. Do not add any additional text in the translation. The text to be translated is:\n{text}"
 
 EDGE_TTS_DICT = {
     "af": ["af-ZA-AdriNeural", "af-ZA-WillemNeural"],
@@ -294,6 +296,22 @@ def call_openai_to_make_article(words, language):
     return completion["choices"][0]["message"]["content"].encode("utf8").decode()
 
 
+def call_edge_gpt_to_make_article(words, language):
+    cookies = json.loads(os.environ.get("EDGE_GPT_COOKIE"))
+    bot = Chatbot(cookies=cookies)
+    prompt = PROMPT_EDGE_GPT.format(language=language, words=words)
+    respond = asyncio.run(bot.ask(prompt))["item"]["messages"]
+    respond = next(
+        x
+        for x in respond
+        if x.get("messageType", None) is None and x.get("author") == "bot"
+    )
+    respond = respond["text"].strip("`")
+    if respond.startswith("md\n"):
+        respond = respond[3:]
+    return respond
+
+
 def call_openai_to_make_trans(text, language="Simplified Chinese"):
     prompt = PROMPT_TRANS.format(text=text, language=language)
     completion = openai.ChatCompletion.create(
@@ -301,6 +319,19 @@ def call_openai_to_make_trans(text, language="Simplified Chinese"):
         messages=[{"role": "user", "content": prompt}],
     )
     return completion["choices"][0]["message"]["content"].encode("utf8").decode()
+
+
+def call_edge_gpt_to_make_trans(text, language="Simplified Chinese"):
+    cookies = json.loads(os.environ.get("EDGE_GPT_COOKIE"))
+    bot = Chatbot(cookies=cookies)
+    prompt = PROMPT_TRANS.format(text=text, language=language)
+    respond = asyncio.run(bot.ask(prompt))["item"]["messages"]
+    respond = next(
+        x
+        for x in respond
+        if x.get("messageType", None) is None and x.get("author") == "bot"
+    )
+    return respond["text"]
 
 
 def get_duolingo_setting():
@@ -371,8 +402,13 @@ def get_duolingo_words_and_save_mp3(tts_url, latest_num=100):
         t.join()
 
     words_str = ",".join(words_list)
-    article = call_openai_to_make_article(words_str, language)
-    article_trans = call_openai_to_make_trans(article)
+    if "OPENAI_API_KEY" in os.environ and os.environ.get("OPENAI_API_KEY") != "":
+        article = call_openai_to_make_article(words_str, language)
+        article_trans = call_openai_to_make_trans(article)
+    elif "EDGE_GPT_COOKIE" in os.environ and os.environ.get("EDGE_GPT_COOKIE") != "":
+        article = call_edge_gpt_to_make_article(words_str, language)
+        article_trans = call_edge_gpt_to_make_trans(article)
+
     # call edge-tts to generate mp3
     make_edge_tts_mp3(article, language_short)
 

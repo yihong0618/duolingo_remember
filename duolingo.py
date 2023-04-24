@@ -21,7 +21,7 @@ PROMPT = "Please write a short story in {language} which is less than 300 words,
 PROMPT_EDGE_GPT = "Please write a short story in {language} which is less than 300 words, please tell the story only without anything else, the story should use simple words and these special words must be included: {words}."
 PROMPT_TRANS = "Translate the given text to {language}. Be faithful or accurate in translation. Make the translation readable or intelligible. Be elegant or natural in translation. If the text cannot be translated, return the original text as is. Do not translate person's name. Do not add any additional text in the translation. The text to be translated is:\n{text}"
 PROMPT_CONVERSATION = "Can you expand these words `{words}` into an {language} conversation that contains these words? The conversation is between two people, male and female, male is A, female is B. Just return the conversation between these two people"
-
+PROMPT_EDGE_GPT_CONVERSATION = "Can you expand these words `{words}` into an {language} conversation that contains these words? The conversation is between two people, male and female, male is A, female is B. Just return the conversation content between these two people. Please don't return anything else, including explanations like \"Here is ...\" with the conversation."
 EDGE_TTS_DICT = {}
 
 GENDER_LIST = ["Male", "Female"]
@@ -61,6 +61,8 @@ def call_edge_gpt_to_make_article(words, language):
     respond = respond["text"].strip("`")
     if respond.startswith("md\n"):
         respond = respond[3:]
+    if respond.startswith("markdown:\n"):
+        respond = respond[9:]
     return respond
 
 
@@ -86,6 +88,26 @@ def call_edge_gpt_to_make_trans(text, language="Simplified Chinese"):
     return respond["text"]
 
 
+def call_edge_gpt_to_make_conversation(words, language):
+    cookies = json.loads(os.environ.get("EDGE_GPT_COOKIE"))
+    bot = Chatbot(cookies=cookies)
+    prompt = PROMPT_EDGE_GPT_CONVERSATION.format(
+        words=words, language=language)
+    respond = asyncio.run(bot.ask(prompt))["item"]["messages"]
+    print(json.dumps(respond))
+    respond = next(
+        x
+        for x in respond
+        if x.get("messageType", None) is None and x.get("author") == "bot"
+    )
+    respond = respond["text"].strip("`")
+    if respond.startswith("md\n"):
+        respond = respond[3:]
+    if respond.startswith("markdown\n"):
+        respond = respond[9:]
+    return respond
+
+
 class Duolingo:
     """
     TODO refactor
@@ -105,7 +127,8 @@ def get_duolingo_setting():
     tts_base_url = setting_data.get("tts_base_url")
     if not tts_base_url:
         raise Exception("Something wrong get the tts url")
-    lauguage_tts_dict = setting_data.get("tts_voice_configuration", {}).get("voices")
+    lauguage_tts_dict = setting_data.get(
+        "tts_voice_configuration", {}).get("voices")
     return tts_base_url, json.loads(lauguage_tts_dict)
 
 
@@ -118,7 +141,8 @@ def get_duolingo_daily(name, jwt):
     is_today_check = data["streak_extended_today"]
     streak = data["site_streak"]
     lauguage = data["learning_language"]
-    level_progress = data["language_data"].get(lauguage, {}).get("level_progress", 0)
+    level_progress = data["language_data"].get(
+        lauguage, {}).get("level_progress", 0)
     return level_progress, lauguage, streak, is_today_check
 
 
@@ -147,18 +171,21 @@ def make_edge_conversation_tts_mp3(text, language_short):
             line = line[3:]
             print(line)
             communicate = edge_tts.Communicate(line, male_voice)
-            asyncio.run(communicate.save(os.path.join("CONVERSATION_NEW", f"{i}.mp3")))
+            asyncio.run(communicate.save(
+                os.path.join("CONVERSATION_NEW", f"{i}.mp3")))
             i += 1
         elif line.startswith("B: "):
             line = line[3:]
             print(line)
             communicate = edge_tts.Communicate(line, female_voice)
-            asyncio.run(communicate.save(os.path.join("CONVERSATION_NEW", f"{i}.mp3")))
+            asyncio.run(communicate.save(
+                os.path.join("CONVERSATION_NEW", f"{i}.mp3")))
             i += 1
 
 
 def get_duolingo_words_and_save_mp3(tts_url, latest_num=100):
-    r = requests.get("https://www.duolingo.com/vocabulary/overview", headers=HEADERS)
+    r = requests.get(
+        "https://www.duolingo.com/vocabulary/overview", headers=HEADERS)
     if not r.ok:
         raise Exception("get duolingo words failed")
     res_json = r.json()
@@ -199,8 +226,12 @@ def get_duolingo_words_and_save_mp3(tts_url, latest_num=100):
     elif os.environ.get("EDGE_GPT_COOKIE"):
         article = call_edge_gpt_to_make_article(words_str, language)
         article_trans = call_edge_gpt_to_make_trans(article)
+        # conversation
+        conversion = call_edge_gpt_to_make_conversation(words_str, language)
+        conversion_trans = call_edge_gpt_to_make_trans(conversion)
     else:
-        raise Exception("Please provide OPENAI_API_KEY or EDGE_GPT_COOKIE in env")
+        raise Exception(
+            "Please provide OPENAI_API_KEY or EDGE_GPT_COOKIE in env")
 
     # call edge-tts to generate mp3
     make_edge_article_tts_mp3(article, language_short)
@@ -242,15 +273,18 @@ def main(duolingo_user_name, duolingo_jwt, tele_token, tele_chat_id, latest_num)
             f"Your streak: {duolingo_streak}\n" "New words\n" + duolingo_words
         )
         requests.post(
-            url="https://api.telegram.org/bot{0}/{1}".format(tele_token, "sendMessage"),
+            url="https://api.telegram.org/bot{0}/{1}".format(
+                tele_token, "sendMessage"),
             data={"chat_id": tele_chat_id, "text": duolingo_words},
         )
         requests.post(
-            url="https://api.telegram.org/bot{0}/{1}".format(tele_token, "sendMessage"),
+            url="https://api.telegram.org/bot{0}/{1}".format(
+                tele_token, "sendMessage"),
             data={"chat_id": tele_chat_id, "text": f"New Article:\n{article}"},
         )
         requests.post(
-            url="https://api.telegram.org/bot{0}/{1}".format(tele_token, "sendMessage"),
+            url="https://api.telegram.org/bot{0}/{1}".format(
+                tele_token, "sendMessage"),
             data={
                 "chat_id": tele_chat_id,
                 "text": f"New Article Trans:\n{article_trans}",
@@ -279,7 +313,8 @@ def main(duolingo_user_name, duolingo_jwt, tele_token, tele_chat_id, latest_num)
 
     if not duolingo_today_check and tele_chat_id and tele_token:
         requests.post(
-            url="https://api.telegram.org/bot{0}/{1}".format(tele_token, "sendMessage"),
+            url="https://api.telegram.org/bot{0}/{1}".format(
+                tele_token, "sendMessage"),
             data={
                 "chat_id": tele_chat_id,
                 "text": "You are not streak today, please note",

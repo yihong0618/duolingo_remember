@@ -402,10 +402,10 @@ def get_duolingo_words_and_save_mp3(tts_url, latest_num=100):
         t.join()
 
     words_str = ",".join(words_list)
-    if "OPENAI_API_KEY" in os.environ and os.environ.get("OPENAI_API_KEY") != "":
+    if os.environ.get("OPENAI_API_KEY"):
         article = call_openai_to_make_article(words_str, language)
         article_trans = call_openai_to_make_trans(article)
-    elif "EDGE_GPT_COOKIE" in os.environ and os.environ.get("EDGE_GPT_COOKIE") != "":
+    elif os.environ.get("EDGE_GPT_COOKIE"):
         article = call_edge_gpt_to_make_article(words_str, language)
         article_trans = call_edge_gpt_to_make_trans(article)
 

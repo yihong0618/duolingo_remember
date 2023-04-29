@@ -2,4 +2,4 @@ requests
 openai
 edge-tts
 rich
-EdgeGPT==0.1.13.1
+EdgeGPT==0.3.1

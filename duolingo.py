@@ -101,47 +101,118 @@ def call_edge_gpt_to_make_conversation(words, language):
     respond = respond["text"]
     respond = respond[respond.find("A:") :]
     respond = respond.strip("`")
-    if respond.startswith("md\n"):
-        respond = respond[3:]
-    if respond.startswith("markdown\n"):
-        respond = respond[9:]
     return respond
 
 
 class Duolingo:
-    """
-    TODO refactor
-    """
+    def __init__(self, duolingo_name, duolingo_jwt, latest_number=50):
+        self.duolingo_name = duolingo_name
+        self.duolingo_jwt = duolingo_jwt
+        self.s = requests.session()
+        self.lauguage = None
+        self.tts_url = ""
+        self.latest_number = latest_number
+        self.duolingo_data = None
 
-    def __init__(self):
-        pass
+    def _make_duolingo_setting(self):
+        try:
+            r = self.s.get(DUOLINGO_SETTING_URL, headers=HEADERS)
+        except Exception as e:
+            print(f"Something is wrong to get the setting error: {str(e)}")
+            exit(1)
+        setting_data = r.json()
+        tts_base_url = setting_data.get("tts_base_url")
+        if not tts_base_url:
+            raise Exception("Something wrong get the tts url")
+        # request data
+        HEADERS["Authorization"] = "Bearer " + self.duolingo_jwt
+        r = self.s.get(
+            f"https://www.duolingo.com/users/{self.duolingo_name}", headers=HEADERS
+        )
+        if r.status_code != 200:
+            raise Exception("Get profile failed")
+        self.duolingo_data = r.json()
+        self.lauguage = self.duolingo_data["learning_language"]
 
+        lauguage_tts_dict = setting_data.get("tts_voice_configuration", {}).get(
+            "voices"
+        )
+        lauguage_path = json.loads(lauguage_tts_dict).get(self.lauguage)
+        self.tts_url = f"{tts_base_url}tts/{lauguage_path}/token/"
 
-def get_duolingo_setting():
-    try:
-        r = requests.get(DUOLINGO_SETTING_URL, headers=HEADERS)
-    except Exception as e:
-        print(f"Something is wrong to get the setting error: {str(e)}")
-        exit(1)
-    setting_data = r.json()
-    tts_base_url = setting_data.get("tts_base_url")
-    if not tts_base_url:
-        raise Exception("Something wrong get the tts url")
-    lauguage_tts_dict = setting_data.get("tts_voice_configuration", {}).get("voices")
-    return tts_base_url, json.loads(lauguage_tts_dict)
+    def get_duolingo_daily(self):
+        if not self.duolingo_data:
+            self._make_duolingo_setting()
+        is_today_check = self.duolingo_data["streak_extended_today"]
+        streak = self.duolingo_data["site_streak"]
+        level_progress = (
+            self.duolingo_data["language_data"]
+            .get(self.lauguage, {})
+            .get("level_progress", 0)
+        )
+        return level_progress, streak, is_today_check
 
+    def get_duolingo_words_and_save_mp3(self):
+        if not self.tts_url:
+            self._make_duolingo_setting()
+        r = self.s.get("https://www.duolingo.com/vocabulary/overview", headers=HEADERS)
+        if not r.ok:
+            raise Exception("get duolingo words failed")
+        res_json = r.json()
+        words = res_json["vocab_overview"]
+        language_short = res_json["learning_language"]
+        language = res_json["language_string"]
 
-def get_duolingo_daily(name, jwt):
-    HEADERS["Authorization"] = "Bearer " + jwt
-    r = requests.get(f"https://www.duolingo.com/users/{name}", headers=HEADERS)
-    if r.status_code != 200:
-        raise Exception("Get profile failed")
-    data = r.json()
-    is_today_check = data["streak_extended_today"]
-    streak = data["site_streak"]
-    lauguage = data["learning_language"]
-    level_progress = data["language_data"].get(lauguage, {}).get("level_progress", 0)
-    return level_progress, lauguage, streak, is_today_check
+        words.sort(key=lambda v: v.get("last_practiced_ms", 0), reverse=True)
+        words_list = []
+        my_new_words = words[: self.latest_number]
+
+        def download_word_to_mp3(i, word_string):
+            mp3_content = requests.get(f"{self.tts_url}{word_string}")
+            with open(os.path.join("MP3_NEW", str(i) + ".mp3"), "wb") as f:
+                f.write(mp3_content.content)
+
+        for w in my_new_words:
+            if w["normalized_string"] == "<*sf>":
+                continue
+            word_string = w["word_string"]
+            words_list.append(word_string)
+
+        for index, w in enumerate(words_list):
+            t = threading.Thread(target=download_word_to_mp3, args=(index, w))
+            t.start()
+            t.join()
+
+        words_str = ",".join(words_list)
+        conversion = ""
+        conversion_trans = ""
+        if os.environ.get("OPENAI_API_KEY"):
+            article = call_openai_to_make_article(words_str, language)
+            article_trans = call_openai_to_make_trans(article)
+            # conversation
+            conversion = call_openai_to_make_conversation(words_str, language)
+            conversion_trans = call_openai_to_make_trans(conversion)
+
+        elif os.environ.get("EDGE_GPT_COOKIE"):
+            article = call_edge_gpt_to_make_article(words_str, language)
+            article_trans = call_edge_gpt_to_make_trans(article)
+            conversion = call_edge_gpt_to_make_conversation(words_str, language)
+            conversion_trans = call_edge_gpt_to_make_trans(conversion)
+        else:
+            raise Exception("Please provide OPENAI_API_KEY or EDGE_GPT_COOKIE in env")
+
+        # call edge-tts to generate mp3
+        make_edge_article_tts_mp3(article, language_short)
+        make_edge_conversation_tts_mp3(conversion, language_short)
+
+        if words_list:
+            return (
+                "\n".join(words_list),
+                article,
+                article_trans,
+                conversion,
+                conversion_trans,
+            )
 
 
 def make_edge_article_tts_mp3(text, language_short):
@@ -179,88 +250,23 @@ def make_edge_conversation_tts_mp3(text, language_short):
             i += 1
 
 
-def get_duolingo_words_and_save_mp3(tts_url, latest_num=100):
-    r = requests.get("https://www.duolingo.com/vocabulary/overview", headers=HEADERS)
-    if not r.ok:
-        raise Exception("get duolingo words failed")
-    res_json = r.json()
-    words = res_json["vocab_overview"]
-    language_short = res_json["learning_language"]
-    language = res_json["language_string"]
-
-    words.sort(key=lambda v: v.get("last_practiced_ms", 0), reverse=True)
-    words_list = []
-    my_new_words = words[:latest_num]
-
-    def download_word_to_mp3(i, word_string, tts_url=tts_url):
-        mp3_content = requests.get(f"{tts_url}{word_string}")
-        with open(os.path.join("MP3_NEW", str(i) + ".mp3"), "wb") as f:
-            f.write(mp3_content.content)
-
-    for w in my_new_words:
-        if w["normalized_string"] == "<*sf>":
-            continue
-        word_string = w["word_string"]
-        words_list.append(word_string)
-
-    for index, w in enumerate(words_list):
-        t = threading.Thread(target=download_word_to_mp3, args=(index, w))
-        t.start()
-        t.join()
-
-    words_str = ",".join(words_list)
-    conversion = ""
-    conversion_trans = ""
-    if os.environ.get("OPENAI_API_KEY"):
-        article = call_openai_to_make_article(words_str, language)
-        article_trans = call_openai_to_make_trans(article)
-        # conversation
-        conversion = call_openai_to_make_conversation(words_str, language)
-        conversion_trans = call_openai_to_make_trans(conversion)
-
-    elif os.environ.get("EDGE_GPT_COOKIE"):
-        article = call_edge_gpt_to_make_article(words_str, language)
-        article_trans = call_edge_gpt_to_make_trans(article)
-        # conversation
-        conversion = call_edge_gpt_to_make_conversation(words_str, language)
-        conversion_trans = call_edge_gpt_to_make_trans(conversion)
-    else:
-        raise Exception("Please provide OPENAI_API_KEY or EDGE_GPT_COOKIE in env")
-
-    # call edge-tts to generate mp3
-    make_edge_article_tts_mp3(article, language_short)
-    make_edge_conversation_tts_mp3(conversion, language_short)
-
-    if words_list:
-        return (
-            "\n".join(words_list),
-            article,
-            article_trans,
-            conversion,
-            conversion_trans,
-        )
-
-
 def main(duolingo_user_name, duolingo_jwt, tele_token, tele_chat_id, latest_num):
-    _, lauguage, duolingo_streak, duolingo_today_check = get_duolingo_daily(
-        duolingo_user_name, duolingo_jwt
-    )
-    tts_url_base, lauguage_setting_dict = get_duolingo_setting()
-    lauguage_path = lauguage_setting_dict.get(lauguage)
-    tts_url = f"{tts_url_base}tts/{lauguage_path}/token/"
     try:
         latest_num = int(latest_num)
     except Exception as e:
         print(str(e))
         # default
         latest_num = 20
+    duolingo = Duolingo(duolingo_user_name, duolingo_jwt, latest_number=latest_num)
+    duolingo._make_duolingo_setting()
+    _, duolingo_streak, duolingo_today_check = duolingo.get_duolingo_daily()
     (
         duolingo_words,
         article,
         article_trans,
         conversion,
         conversion_trans,
-    ) = get_duolingo_words_and_save_mp3(tts_url, latest_num=latest_num)
+    ) = duolingo.get_duolingo_words_and_save_mp3()
     print(duolingo_words, article, article_trans, conversion, conversion_trans)
     if duolingo_words and tele_token and tele_chat_id:
         duolingo_words = (

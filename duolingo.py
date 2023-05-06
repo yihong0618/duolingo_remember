@@ -12,10 +12,7 @@ import asyncio
 from EdgeGPT import Chatbot
 
 DUOLINGO_SETTING_URL = "https://www.duolingo.com/api/1/version_info"
-HEADERS = {
-    "Accept": "*/*",
-    "User-Agent": "request",
-}
+HEADERS = {"Accept": "*/*", "User-Agent": "request"}
 
 PROMPT = "Please write a short story in {language} which is less than 300 words, the story should use simple words and these special words must be included: {words}."
 PROMPT_EDGE_GPT = "Please write a short story in {language} which is less than 300 words, please tell the story only without anything else, the story should use simple words and these special words must be included: {words}."
@@ -30,20 +27,18 @@ with open("edge_voice_list.json") as f:
     EDGE_TTS_DICT = json.loads(f.read())
 
 
-def call_openai_to_make_article(words, language):
+def call_openai_to_make_article(words, language, engine="gpt-3.5-turbo"):
     prompt = PROMPT.format(language=language, words=words)
     completion = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
+        engine=engine, messages=[{"role": "user", "content": prompt}]
     )
     return completion["choices"][0]["message"]["content"].encode("utf8").decode()
 
 
-def call_openai_to_make_conversation(words, language):
+def call_openai_to_make_conversation(words, language, engine="gpt-3.5-turbo"):
     prompt = PROMPT_CONVERSATION.format(language=language, words=words)
     completion = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
+        engine=engine, messages=[{"role": "user", "content": prompt}]
     )
     return completion["choices"][0]["message"]["content"].encode("utf8").decode()
 
@@ -66,11 +61,12 @@ def call_edge_gpt_to_make_article(words, language):
     return respond
 
 
-def call_openai_to_make_trans(text, language="Simplified Chinese"):
+def call_openai_to_make_trans(
+    text, language="Simplified Chinese", engine="gpt-3.5-turbo"
+):
     prompt = PROMPT_TRANS.format(text=text, language=language)
     completion = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
+        engine=engine, messages=[{"role": "user", "content": prompt}]
     )
     return completion["choices"][0]["message"]["content"].encode("utf8").decode()
 
@@ -187,13 +183,30 @@ class Duolingo:
         conversion = ""
         conversion_trans = ""
         if os.environ.get("OPENAI_API_KEY"):
-            article = call_openai_to_make_article(words_str, language)
-            article_trans = call_openai_to_make_trans(article)
+            if os.environ.get("API_TYPE") == "azure":
+                openai.api_type = "azure"
+                openai.api_base = os.environ.get("OPENAI_API_BASE")
+                if openai.api_base is None:
+                    raise Exception("Please provide OPENAI_API_BASE in env")
+                engine = os.environ.get("OPENAI_ENGINE")
+                if engine is None:
+                    raise Exception("Please provide OPENAI_ENGINE in env")
+                api_version = os.environ.get("OPENAI_API_VERSION")
+                openai.api_version = (
+                    api_version if api_version else "2023-03-15-preview"
+                )
+                print(f"Using Azure API with engine {engine}")
+            else:
+                engine = "gpt-3.5-turbo"
+                print(f"Using OpenAI API with engine {engine}")
+            article = call_openai_to_make_article(words_str, language, engine)
+            article_trans = call_openai_to_make_trans(text=article, engine=engine)
             # conversation
-            conversion = call_openai_to_make_conversation(words_str, language)
-            conversion_trans = call_openai_to_make_trans(conversion)
+            conversion = call_openai_to_make_conversation(words_str, language, engine)
+            conversion_trans = call_openai_to_make_trans(text=conversion, engine=engine)
 
         elif os.environ.get("EDGE_GPT_COOKIE"):
+            print("Using Edge GPT API")
             article = call_edge_gpt_to_make_article(words_str, language)
             article_trans = call_edge_gpt_to_make_trans(article)
             conversion = call_edge_gpt_to_make_conversation(words_str, language)

@@ -32,6 +32,7 @@ jobs:
 
       - name: Send new words
         run: |
+          echo ${API_TYPE}
           python duolingo.py ${{ secrets.DUOLINGO_USERNAME }} ${{ secrets.DUOLINGO_JWT }}  --tele_token ${{ secrets.TELE_TOKEN }} --tele_chat_id ${{ secrets.TELE_CHAT_ID }} --latest_number ${{ env.LATEST_WORDS_NUMBER }}
 
       - name: Check file new existence

@@ -27,19 +27,33 @@ with open("edge_voice_list.json") as f:
     EDGE_TTS_DICT = json.loads(f.read())
 
 
-def call_openai_to_make_article(words, language, engine="gpt-3.5-turbo"):
+def call_openai_to_make_article(
+    words, language, engine="gpt-3.5-turbo", use_azure=False
+):
     prompt = PROMPT.format(language=language, words=words)
-    completion = openai.ChatCompletion.create(
-        engine=engine, messages=[{"role": "user", "content": prompt}]
-    )
+    if use_azure:
+        completion = openai.ChatCompletion.create(
+            engine=engine, messages=[{"role": "user", "content": prompt}]
+        )
+    else:
+        completion = openai.ChatCompletion.create(
+            model=engine, messages=[{"role": "user", "content": prompt}]
+        )
     return completion["choices"][0]["message"]["content"].encode("utf8").decode()
 
 
-def call_openai_to_make_conversation(words, language, engine="gpt-3.5-turbo"):
+def call_openai_to_make_conversation(
+    words, language, engine="gpt-3.5-turbo", use_azure=False
+):
     prompt = PROMPT_CONVERSATION.format(language=language, words=words)
-    completion = openai.ChatCompletion.create(
-        engine=engine, messages=[{"role": "user", "content": prompt}]
-    )
+    if use_azure:
+        completion = openai.ChatCompletion.create(
+            engine=engine, messages=[{"role": "user", "content": prompt}]
+        )
+    else:
+        completion = openai.ChatCompletion.create(
+            model=engine, messages=[{"role": "user", "content": prompt}]
+        )
     return completion["choices"][0]["message"]["content"].encode("utf8").decode()
 
 
@@ -62,12 +76,17 @@ def call_edge_gpt_to_make_article(words, language):
 
 
 def call_openai_to_make_trans(
-    text, language="Simplified Chinese", engine="gpt-3.5-turbo"
+    text, language="Simplified Chinese", engine="gpt-3.5-turbo", use_azure=False
 ):
     prompt = PROMPT_TRANS.format(text=text, language=language)
-    completion = openai.ChatCompletion.create(
-        engine=engine, messages=[{"role": "user", "content": prompt}]
-    )
+    if use_azure:
+        completion = openai.ChatCompletion.create(
+            engine=engine, messages=[{"role": "user", "content": prompt}]
+        )
+    else:
+        completion = openai.ChatCompletion.create(
+            model=engine, messages=[{"role": "user", "content": prompt}]
+        )
     return completion["choices"][0]["message"]["content"].encode("utf8").decode()
 
 
@@ -182,8 +201,10 @@ class Duolingo:
         words_str = ",".join(words_list)
         conversion = ""
         conversion_trans = ""
+        use_azure = False
         if os.environ.get("OPENAI_API_KEY"):
             if os.environ.get("API_TYPE") == "azure":
+                use_azure = True
                 openai.api_type = "azure"
                 openai.api_base = os.environ.get("OPENAI_API_BASE")
                 if openai.api_base is None:
@@ -199,11 +220,19 @@ class Duolingo:
             else:
                 engine = "gpt-3.5-turbo"
                 print(f"Using OpenAI API with engine {engine}")
-            article = call_openai_to_make_article(words_str, language, engine)
-            article_trans = call_openai_to_make_trans(text=article, engine=engine)
+            article = call_openai_to_make_article(
+                words_str, language, engine, use_azure=use_azure
+            )
+            article_trans = call_openai_to_make_trans(
+                text=article, engine=engine, use_azure=use_azure
+            )
             # conversation
-            conversion = call_openai_to_make_conversation(words_str, language, engine)
-            conversion_trans = call_openai_to_make_trans(text=conversion, engine=engine)
+            conversion = call_openai_to_make_conversation(
+                words_str, language, engine, use_azure=use_azure
+            )
+            conversion_trans = call_openai_to_make_trans(
+                text=conversion, engine=engine, use_azure=use_azure
+            )
 
         elif os.environ.get("EDGE_GPT_COOKIE"):
             print("Using Edge GPT API")

@@ -4,10 +4,11 @@ on:
   workflow_dispatch:
 
 env:
-  API_TYPE: ${{ secrets.API_TYPE }}
-  OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
-  OPENAI_ENGINE: ${{ secrets.OPENAI_ENGINE }}
-  OPENAI_API_VERSION: ${{ secrets.OPENAI_API_VERSION }}
+  # uncomment these if you are using azure
+  #API_TYPE: ${{ secrets.API_TYPE }}
+  # OPENAI_API_BASE: ${{ secrets.OPENAI_API_BASE }}
+  # OPENAI_ENGINE: ${{ secrets.OPENAI_ENGINE }}
+  # OPENAI_API_VERSION: ${{ secrets.OPENAI_API_VERSION }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   EDGE_GPT_COOKIE: ${{ secrets.EDGE_GPT_COOKIE }}
   LATEST_WORDS_NUMBER: 20
@@ -32,7 +33,6 @@ jobs:
 
       - name: Send new words
         run: |
-          echo ${API_TYPE}
           python duolingo.py ${{ secrets.DUOLINGO_USERNAME }} ${{ secrets.DUOLINGO_JWT }}  --tele_token ${{ secrets.TELE_TOKEN }} --tele_chat_id ${{ secrets.TELE_CHAT_ID }} --latest_number ${{ env.LATEST_WORDS_NUMBER }}
 
       - name: Check file new existence
